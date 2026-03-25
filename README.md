@@ -97,7 +97,7 @@ ai-log-report export json
 | `confidence` | 0.0 – 1.0 |
 | `estimated_time_min` | 1 – 240 |
 
-See `specs/05_technical_spec.md` for the full schema and vocabulary lists.
+See [`specs/05_technical_spec.md`](specs/05_technical_spec.md) for the full schema and vocabulary lists.
 
 ## Integrating with your AI agent
 

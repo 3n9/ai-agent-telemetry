@@ -56,4 +56,4 @@ ai-log init
 }
 ```
 
-Full field reference: see `../specs/05_technical_spec.md`
+Full field reference: see the [technical spec](https://github.com/3n9/ai-agent-telemetry/blob/main/specs/05_technical_spec.md)
