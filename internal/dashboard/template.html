@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Agent Telemetry Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --bg: #09111f;
+    --bg2: #0f1c2f;
+    --surface: rgba(15, 24, 40, 0.84);
+    --surface-strong: rgba(17, 28, 46, 0.96);
+    --surface-soft: rgba(30, 47, 73, 0.62);
+    --border: rgba(145, 181, 228, 0.18);
+    --text: #e6edf7;
+    --muted: #94a8c6;
+    --accent: #5eead4;
+    --accent-2: #f59e0b;
+    --accent-3: #60a5fa;
+    --good: #34d399;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    --radius: 18px;
+  }
+
+  html { color-scheme: dark; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(94, 234, 212, 0.14), transparent 28%),
+      radial-gradient(circle at top right, rgba(96, 165, 250, 0.18), transparent 24%),
+      linear-gradient(180deg, var(--bg), var(--bg2));
+    color: var(--text);
+    font: 14px/1.45 "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  }
+
+  a { color: inherit; }
+  button, input, select { font: inherit; }
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
+  }
+
+  .page {
+    width: min(1680px, calc(100vw - 32px));
+    margin: 0 auto;
+    padding: 24px 0 48px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  .hero-panel,
+  .control-panel,
+  .card,
+  .chart-box,
+  .table-box,
+  .summary-box,
+  .empty-state {
+    background: var(--surface);
+    backdrop-filter: blur(18px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+  }
+
+  .hero-panel {
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-panel::after {
+    content: "";
+    position: absolute;
+    inset: auto -40px -70px auto;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(94, 234, 212, 0.22), transparent 68%);
+    pointer-events: none;
+  }
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(94, 234, 212, 0.1);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 16px 0 10px;
+    font: 600 clamp(28px, 3vw, 44px)/1.02 "IBM Plex Sans", sans-serif;
+    letter-spacing: -0.04em;
+  }
+
+  .hero-panel p {
+    margin: 0;
+    max-width: 52rem;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 18px;
+    flex-wrap: wrap;
+    margin-top: 18px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .control-panel {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .control-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: baseline;
+  }
+
+  .control-head h2,
+  section > h2 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .control-head .range-label {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .preset-row,
+  .date-row,
+  .select-grid {
+    display: grid;
+    gap: 10px;
+  }
+
+  .preset-row {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .preset-btn,
+  .ghost-btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--muted);
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: 140ms ease;
+  }
+
+  .preset-btn:hover,
+  .ghost-btn:hover {
+    color: var(--text);
+    border-color: rgba(94, 234, 212, 0.42);
+    transform: translateY(-1px);
+  }
+
+  .preset-btn.active {
+    background: linear-gradient(135deg, rgba(94, 234, 212, 0.2), rgba(96, 165, 250, 0.2));
+    color: var(--text);
+    border-color: rgba(94, 234, 212, 0.5);
+  }
+
+  .date-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .select-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .field label {
+    display: block;
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .field input,
+  .field select {
+    width: 100%;
+    appearance: none;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    outline: none;
+  }
+
+  .field input:focus,
+  .field select:focus {
+    border-color: rgba(94, 234, 212, 0.6);
+    box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.14);
+  }
+
+  .control-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .record-count {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .record-count strong { color: var(--accent); }
+
+  .active-filters {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    font-size: 12px;
+  }
+
+  .chip span { color: var(--muted); }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .card {
+    padding: 18px;
+    min-height: 110px;
+  }
+
+  .card .label {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .card .value {
+    font-size: clamp(24px, 2vw, 34px);
+    font-weight: 700;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .card .subvalue {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .v-accent { color: var(--accent); }
+  .v-blue { color: var(--accent-3); }
+  .v-good { color: var(--good); }
+  .v-warn { color: var(--warn); }
+  .v-bad { color: var(--bad); }
+
+  main {
+    display: grid;
+    gap: 18px;
+  }
+
+  section {
+    display: grid;
+    gap: 14px;
+  }
+
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: end;
+  }
+
+  .section-head p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    max-width: 56rem;
+  }
+
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    display: grid;
+    gap: 14px;
+  }
+
+  .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .span-2 { grid-column: span 2; }
+
+  .chart-box,
+  .summary-box,
+  .table-box {
+    padding: 18px;
+  }
+
+  .chart-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+
+  .chart-head .title {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .chart-head .subtitle {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .chart-note {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .chart { width: 100%; }
+  .h280 { height: 280px; }
+  .h320 { height: 320px; }
+  .h360 { height: 360px; }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .summary-box p {
+    margin: 0;
+    color: var(--muted);
+  }
+
+  .summary-text {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .highlights {
+    display: grid;
+    gap: 10px;
+  }
+
+  .highlight {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .highlight:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .highlight .k {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .highlight .v {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 10px 0;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    vertical-align: top;
+  }
+
+  th {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  td {
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  td:last-child,
+  th:last-child { text-align: right; }
+
+  .mono {
+    font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
+    font-size: 12px;
+  }
+
+  .empty-state {
+    display: none;
+    padding: 36px 22px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  footer {
+    margin-top: 20px;
+    color: var(--muted);
+    font-size: 12px;
+    text-align: center;
+  }
+
+  @media (max-width: 1320px) {
+    .cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (max-width: 1100px) {
+    .hero { grid-template-columns: 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+
+  @media (max-width: 860px) {
+    .page { width: min(100vw - 20px, 1680px); padding-top: 14px; }
+    .cards,
+    .grid-2,
+    .grid-3,
+    .grid-4,
+    .summary-grid,
+    .date-row,
+    .select-grid { grid-template-columns: 1fr; }
+    .span-2 { grid-column: span 1; }
+    .preset-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero-panel,
+    .control-panel,
+    .chart-box,
+    .summary-box,
+    .table-box,
+    .card { padding: 16px; }
+    .chart-head { align-items: start; flex-direction: column; }
+    th:nth-child(4),
+    td:nth-child(4),
+    th:nth-child(5),
+    td:nth-child(5) { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="hero">
+    <div class="hero-panel">
+      <div class="eyebrow">AI Telemetry Report</div>
+      <h1>Operational view into how agents actually spend time.</h1>
+      <p>
+        This dashboard combines volume, effort, confidence, taxonomy quality, and recency so the report is useful for inspection,
+        not just presentation. Filters below update every card, chart, summary, and detail table.
+      </p>
+      <div class="hero-meta">
+        <span>Generated <strong id="generated-at">__GENERATED_AT__</strong></span>
+        <span>Data window <strong id="hero-window">__MIN_DATE__ to __MAX_DATE__</strong></span>
+        <span>Default view <strong id="hero-default-window">__INITIAL_FROM__ to __INITIAL_TO__</strong></span>
+      </div>
+    </div>
+
+    <form class="control-panel" id="filters" aria-labelledby="filters-heading">
+      <div class="control-head">
+        <h2 id="filters-heading">Filters</h2>
+        <div class="range-label" id="range-label">Last 30 days of data</div>
+      </div>
+
+      <div class="preset-row" role="group" aria-label="Date range presets">
+        <button type="button" class="preset-btn" data-preset="7">7d</button>
+        <button type="button" class="preset-btn" data-preset="30">30d</button>
+        <button type="button" class="preset-btn" data-preset="90">90d</button>
+        <button type="button" class="preset-btn" data-preset="all">All</button>
+      </div>
+
+      <div class="date-row">
+        <div class="field">
+          <label for="date-from">From</label>
+          <input type="date" id="date-from" min="__MIN_DATE__" max="__MAX_DATE__" value="__INITIAL_FROM__">
+        </div>
+        <div class="field">
+          <label for="date-to">To</label>
+          <input type="date" id="date-to" min="__MIN_DATE__" max="__MAX_DATE__" value="__INITIAL_TO__">
+        </div>
+      </div>
+
+      <div class="select-grid">
+        <div class="field">
+          <label for="task-type">Task Type</label>
+          <select id="task-type"></select>
+        </div>
+        <div class="field">
+          <label for="complexity">Complexity</label>
+          <select id="complexity"></select>
+        </div>
+        <div class="field">
+          <label for="agent-name">Agent</label>
+          <select id="agent-name"></select>
+        </div>
+        <div class="field">
+          <label for="model-name">Model</label>
+          <select id="model-name"></select>
+        </div>
+        <div class="field">
+          <label for="work-type">Work Type</label>
+          <select id="work-type"></select>
+        </div>
+        <div class="field">
+          <label for="domain">Domain</label>
+          <select id="domain"></select>
+        </div>
+      </div>
+
+      <div class="control-actions">
+        <div class="record-count" aria-live="polite">Showing <strong id="count-display">0</strong> records</div>
+        <button type="button" class="ghost-btn" id="reset-filters">Reset filters</button>
+      </div>
+      <div class="active-filters" id="active-filters" aria-live="polite"></div>
+    </form>
+  </header>
+
+  <div class="empty-state" id="no-data" role="status" aria-live="polite">
+    <strong>No records match the current filters.</strong>
+    <p>Adjust the date range or clear one of the dimension filters to bring data back into view.</p>
+  </div>
+
+  <main id="dashboard-main">
+    <section aria-labelledby="overview-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="overview-heading">Overview</h2>
+          <p>Core volume and effort metrics for the filtered slice.</p>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card"><div class="label">Tasks</div><div class="value v-accent" id="s-tasks">-</div><div class="subvalue" id="s-tasks-sub">-</div></div>
+        <div class="card"><div class="label">Subtasks</div><div class="value v-blue" id="s-subtasks">-</div><div class="subvalue" id="s-subtasks-sub">-</div></div>
+        <div class="card"><div class="label">Interruptions</div><div class="value v-bad" id="s-interruptions">-</div><div class="subvalue" id="s-interruptions-sub">-</div></div>
+        <div class="card"><div class="label">Estimated Minutes</div><div class="value v-good" id="s-minutes">-</div><div class="subvalue" id="s-minutes-sub">-</div></div>
+        <div class="card"><div class="label">Active Agents</div><div class="value v-warn" id="s-agents">-</div><div class="subvalue" id="s-agents-sub">-</div></div>
+        <div class="card"><div class="label">Active Models</div><div class="value" id="s-models">-</div><div class="subvalue" id="s-models-sub">-</div></div>
+      </div>
+    </section>
+
+    <section aria-labelledby="trend-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="trend-heading">Trends</h2>
+          <p>Daily patterns expose bursts, dips, and recency in a way the distribution charts cannot.</p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Tasks per Day</div><div class="subtitle" id="tasks-day-note">Volume trend</div></div>
+          <div id="c-tasks-day" class="chart h320" aria-label="Tasks per day chart"></div>
+          <div class="chart-note" id="tasks-day-summary">-</div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Estimated Minutes per Day</div><div class="subtitle" id="minutes-day-note">Effort trend</div></div>
+          <div id="c-minutes-day" class="chart h320" aria-label="Estimated minutes per day chart"></div>
+          <div class="chart-note" id="minutes-day-summary">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="distribution-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="distribution-heading">Distribution</h2>
+          <p>Ranked charts replace the previous donut-heavy layout so larger datasets stay readable.</p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Work Type by Record Count</div><div class="subtitle">Top categories in the current slice</div></div>
+          <div id="c-wt-count" class="chart h360" aria-label="Work type by record count chart"></div>
+          <div class="chart-note" id="wt-count-summary">-</div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Work Type by Estimated Minutes</div><div class="subtitle">Where effort is concentrated</div></div>
+          <div id="c-wt-mins" class="chart h360" aria-label="Work type by estimated minutes chart"></div>
+          <div class="chart-note" id="wt-mins-summary">-</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Agents by Volume</div><div class="subtitle">Top 8 agents plus other</div></div>
+          <div id="c-agents" class="chart h320" aria-label="Agent volume chart"></div>
+          <div class="chart-note" id="agents-summary">-</div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Interruptions by Model</div><div class="subtitle">Only interruption records</div></div>
+          <div id="c-interruptions" class="chart h320" aria-label="Interruptions by model chart"></div>
+          <div class="chart-note" id="interruptions-summary">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="quality-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="quality-heading">Quality and Linkage</h2>
+          <p>Confidence, parent linkage, and taxonomy source highlight data hygiene in the telemetry stream.</p>
+        </div>
+      </div>
+      <div class="grid-4">
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Complexity Mix</div><div class="subtitle">Low, medium, high</div></div>
+          <div id="c-complexity" class="chart h280" aria-label="Complexity distribution chart"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Average Confidence by Work Type</div><div class="subtitle">Higher is more certain</div></div>
+          <div id="c-confidence" class="chart h280" aria-label="Average confidence by work type chart"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Parent Link Status</div><div class="subtitle">Linked, none, dangling</div></div>
+          <div id="c-parentlink" class="chart h280" aria-label="Parent link status chart"></div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Tag Source</div><div class="subtitle">Recommended versus custom</div></div>
+          <div id="c-tagsource" class="chart h280" aria-label="Tag source chart"></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="taxonomy-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="taxonomy-heading">Taxonomy and Coverage</h2>
+          <p>Top tags and the model-by-complexity matrix reveal how teams classify work and where effort clusters.</p>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Top Tags</div><div class="subtitle">Top 12 normalized tags</div></div>
+          <div id="c-tags" class="chart h320" aria-label="Top tags chart"></div>
+          <div class="chart-note" id="tags-summary">-</div>
+        </div>
+        <div class="chart-box">
+          <div class="chart-head"><div class="title">Model x Complexity Heatmap</div><div class="subtitle">Sum of estimated minutes</div></div>
+          <div id="c-heatmap" class="chart h320" aria-label="Model by complexity heatmap"></div>
+          <div class="chart-note" id="heatmap-summary">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="details-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="details-heading">Details</h2>
+          <p>Text summaries and tables provide a chart-free way to inspect the same filtered slice.</p>
+        </div>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-box">
+          <div class="chart-head"><div class="title">Narrative Summary</div><div class="subtitle">Readable without hovering charts</div></div>
+          <p class="summary-text" id="summary-blurb">-</p>
+        </div>
+        <div class="summary-box">
+          <div class="chart-head"><div class="title">Slice Highlights</div><div class="subtitle">Top-level signals</div></div>
+          <div class="highlights" id="highlights"></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="table-box">
+          <div class="chart-head"><div class="title">Top Work Types</div><div class="subtitle">Count, minutes, and confidence</div></div>
+          <table>
+            <thead>
+              <tr><th>Work Type</th><th>Count</th><th>Minutes</th><th>Avg Confidence</th></tr>
+            </thead>
+            <tbody id="table-worktypes"></tbody>
+          </table>
+        </div>
+        <div class="table-box">
+          <div class="chart-head"><div class="title">Top Agents</div><div class="subtitle">Current filtered slice</div></div>
+          <table>
+            <thead>
+              <tr><th>Agent</th><th>Count</th><th>Minutes</th><th>Models</th></tr>
+            </thead>
+            <tbody id="table-agents"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="table-box">
+        <div class="chart-head"><div class="title">Recent Records</div><div class="subtitle">Latest 12 items in the filtered slice</div></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Agent / Model</th>
+              <th>Work</th>
+              <th>Type</th>
+              <th>Minutes</th>
+              <th>Confidence</th>
+            </tr>
+          </thead>
+          <tbody id="table-records"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer>ai-agent-telemetry · ai-log-report dashboard</footer>
+</div>
+
+<script>
+/*__ECHARTS_PLACEHOLDER__*/
+</script>
+<script>
+const ALL_RECORDS = __RECORDS_JSON__;
+const MIN_DATE = "__MIN_DATE__";
+const MAX_DATE = "__MAX_DATE__";
+const INITIAL_FROM = "__INITIAL_FROM__";
+const INITIAL_TO = "__INITIAL_TO__";
+
+const COLORS = {
+  accent: "#5eead4",
+  blue: "#60a5fa",
+  green: "#34d399",
+  yellow: "#f59e0b",
+  red: "#f87171",
+  violet: "#a78bfa",
+  rose: "#fb7185",
+  cyan: "#22d3ee",
+  slate: "#94a8c6"
+};
+
+const PALETTE = [COLORS.accent, COLORS.blue, COLORS.green, COLORS.yellow, COLORS.violet, COLORS.rose, COLORS.cyan, "#38bdf8", "#fca5a5"];
+const BG = "rgba(0,0,0,0)";
+const GRID = { left: 18, right: 18, top: 12, bottom: 14, containLabel: true };
+const TEXT_STYLE = { color: "#e6edf7", fontFamily: "IBM Plex Sans, Avenir Next, Segoe UI, sans-serif" };
+const AXIS_LINE = { lineStyle: { color: "rgba(145, 181, 228, 0.18)" } };
+const SPLIT_LINE = { lineStyle: { color: "rgba(145, 181, 228, 0.10)" } };
+
+const state = {
+  fromDate: INITIAL_FROM || "",
+  toDate: INITIAL_TO || "",
+  taskType: "",
+  complexity: "",
+  agentName: "",
+  modelName: "",
+  workType: "",
+  domain: ""
+};
+
+const controls = {
+  from: document.getElementById("date-from"),
+  to: document.getElementById("date-to"),
+  taskType: document.getElementById("task-type"),
+  complexity: document.getElementById("complexity"),
+  agentName: document.getElementById("agent-name"),
+  modelName: document.getElementById("model-name"),
+  workType: document.getElementById("work-type"),
+  domain: document.getElementById("domain")
+};
+
+const chartIds = [
+  "c-tasks-day", "c-minutes-day", "c-wt-count", "c-wt-mins", "c-agents",
+  "c-interruptions", "c-complexity", "c-confidence", "c-parentlink",
+  "c-tagsource", "c-tags", "c-heatmap"
+];
+const charts = {};
+chartIds.forEach((id) => {
+  charts[id] = echarts.init(document.getElementById(id), null, { renderer: "canvas", backgroundColor: BG });
+});
+window.addEventListener("resize", () => Object.values(charts).forEach((chart) => chart.resize()));
+
+function dayOnly(value) {
+  return value && value.length >= 10 ? value.slice(0, 10) : "";
+}
+
+function parseLocalDate(ymd) {
+  if (!ymd) return null;
+  const parts = ymd.split("-").map(Number);
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function formatDateLabel(ymd) {
+  const date = parseLocalDate(ymd);
+  if (!date) return "-";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function addDays(ymd, delta) {
+  const date = parseLocalDate(ymd);
+  if (!date) return "";
+  date.setDate(date.getDate() + delta);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function clampDate(date, min, max) {
+  if (!date) return "";
+  if (min && date < min) return min;
+  if (max && date > max) return max;
+  return date;
+}
+
+function setPreset(days) {
+  if (days === "all") {
+    state.fromDate = MIN_DATE || "";
+    state.toDate = MAX_DATE || "";
+  } else {
+    state.toDate = MAX_DATE || "";
+    state.fromDate = clampDate(addDays(state.toDate, -(days - 1)), MIN_DATE, MAX_DATE);
+  }
+  syncDateInputs();
+  syncPresetButtons();
+  render();
+}
+
+function syncDateInputs() {
+  controls.from.value = state.fromDate;
+  controls.to.value = state.toDate;
+}
+
+function selectValue(record, field) {
+  return record[field] || "";
+}
+
+function uniqueValues(records, field) {
+  return [...new Set(records.map((record) => selectValue(record, field)).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function fillSelect(select, values, label) {
+  select.innerHTML = "";
+  const all = document.createElement("option");
+  all.value = "";
+  all.textContent = `All ${label}`;
+  select.appendChild(all);
+  values.forEach((value) => {
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    select.appendChild(option);
+  });
+}
+
+function initializeControls() {
+  fillSelect(controls.taskType, uniqueValues(ALL_RECORDS, "task_type"), "task types");
+  fillSelect(controls.complexity, uniqueValues(ALL_RECORDS, "complexity"), "complexities");
+  fillSelect(controls.agentName, uniqueValues(ALL_RECORDS, "agent_name"), "agents");
+  fillSelect(controls.modelName, uniqueValues(ALL_RECORDS, "model_name"), "models");
+  fillSelect(controls.workType, uniqueValues(ALL_RECORDS, "work_type"), "work types");
+  fillSelect(controls.domain, uniqueValues(ALL_RECORDS, "domain"), "domains");
+}
+
+function applyControlValues() {
+  controls.taskType.value = state.taskType;
+  controls.complexity.value = state.complexity;
+  controls.agentName.value = state.agentName;
+  controls.modelName.value = state.modelName;
+  controls.workType.value = state.workType;
+  controls.domain.value = state.domain;
+  syncDateInputs();
+}
+
+function getFilteredRecords() {
+  return ALL_RECORDS.filter((record) => {
+    const day = dayOnly(record.created_at);
+    return (!state.fromDate || day >= state.fromDate) &&
+      (!state.toDate || day <= state.toDate) &&
+      (!state.taskType || record.task_type === state.taskType) &&
+      (!state.complexity || record.complexity === state.complexity) &&
+      (!state.agentName || record.agent_name === state.agentName) &&
+      (!state.modelName || record.model_name === state.modelName) &&
+      (!state.workType || record.work_type === state.workType) &&
+      (!state.domain || record.domain === state.domain);
+  });
+}
+
+function groupBy(records, keyFn) {
+  const map = {};
+  records.forEach((record) => {
+    const key = keyFn(record) || "(none)";
+    if (!map[key]) {
+      map[key] = { count: 0, minutes: 0, confidence: 0, models: new Set() };
+    }
+    map[key].count += 1;
+    map[key].minutes += record.estimated_time_min;
+    map[key].confidence += record.confidence;
+    if (record.model_name) map[key].models.add(record.model_name);
+  });
+  return Object.entries(map).map(([label, value]) => ({
+    label,
+    count: value.count,
+    minutes: value.minutes,
+    avgConf: value.count ? value.confidence / value.count : 0,
+    modelCount: value.models.size
+  }));
+}
+
+function sortByCount(entries) {
+  return entries.sort((a, b) => (b.count - a.count) || a.label.localeCompare(b.label));
+}
+
+function aggregateTopN(entries, limit) {
+  const ordered = entries.slice().sort((a, b) => (b.count - a.count) || (b.minutes - a.minutes));
+  if (ordered.length <= limit) return ordered;
+  const head = ordered.slice(0, limit);
+  const rest = ordered.slice(limit).reduce((acc, entry) => {
+    acc.count += entry.count;
+    acc.minutes += entry.minutes;
+    acc.avgConfWeighted += entry.avgConf * entry.count;
+    return acc;
+  }, { count: 0, minutes: 0, avgConfWeighted: 0 });
+  head.push({
+    label: "Other",
+    count: rest.count,
+    minutes: rest.minutes,
+    avgConf: rest.count ? rest.avgConfWeighted / rest.count : 0,
+    modelCount: 0
+  });
+  return head;
+}
+
+function uniqueCount(records, field) {
+  return new Set(records.map((record) => record[field]).filter(Boolean)).size;
+}
+
+function percent(part, total) {
+  if (!total) return 0;
+  return (part / total) * 100;
+}
+
+function fmtInt(value) {
+  return new Intl.NumberFormat().format(Math.round(value || 0));
+}
+
+function fmtPct(value, digits = 1) {
+  return `${(value * 100).toFixed(digits)}%`;
+}
+
+function dailySeries(records) {
+  const map = {};
+  records.forEach((record) => {
+    const day = dayOnly(record.created_at);
+    if (!day) return;
+    if (!map[day]) map[day] = { count: 0, minutes: 0 };
+    map[day].count += 1;
+    map[day].minutes += record.estimated_time_min;
+  });
+  const keys = Object.keys(map).sort();
+  return {
+    days: keys,
+    counts: keys.map((day) => map[day].count),
+    minutes: keys.map((day) => map[day].minutes)
+  };
+}
+
+function tagsSummary(records) {
+  const map = {};
+  records.forEach((record) => {
+    record.tags.forEach((tag) => {
+      map[tag.value] = (map[tag.value] || 0) + 1;
+    });
+  });
+  return Object.entries(map).map(([label, count]) => ({ label, count }));
+}
+
+function tagSourceSummary(records) {
+  const map = {};
+  records.forEach((record) => {
+    record.tags.forEach((tag) => {
+      map[tag.source] = (map[tag.source] || 0) + 1;
+    });
+  });
+  return Object.entries(map).map(([label, count]) => ({ label, count }));
+}
+
+function setChartEmpty(chart, message) {
+  chart.clear();
+  chart.setOption({
+    title: {
+      text: message,
+      left: "center",
+      top: "middle",
+      textStyle: { ...TEXT_STYLE, color: "#94a8c6", fontSize: 13, fontWeight: 500 }
+    }
+  });
+}
+
+function baseBarOption(labels, values, color, formatter) {
+  return {
+    animationDuration: 300,
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "shadow" },
+      formatter: formatter
+    },
+    grid: GRID,
+    xAxis: {
+      type: "value",
+      axisLabel: TEXT_STYLE,
+      axisLine: AXIS_LINE,
+      splitLine: SPLIT_LINE
+    },
+    yAxis: {
+      type: "category",
+      data: labels,
+      axisLabel: { ...TEXT_STYLE, fontSize: 11 },
+      axisLine: AXIS_LINE
+    },
+    series: [{
+      type: "bar",
+      data: values,
+      barMaxWidth: 18,
+      itemStyle: { color, borderRadius: [0, 8, 8, 0] },
+      label: { show: true, position: "right", color: "#e6edf7", fontSize: 11 }
+    }]
+  };
+}
+
+function updateActiveFilters() {
+  const items = [];
+  if (state.fromDate || state.toDate) {
+    items.push(`Date: <span>${state.fromDate || MIN_DATE} to ${state.toDate || MAX_DATE}</span>`);
+  }
+  [["Task", state.taskType], ["Complexity", state.complexity], ["Agent", state.agentName], ["Model", state.modelName], ["Work Type", state.workType], ["Domain", state.domain]]
+    .forEach(([label, value]) => {
+      if (value) items.push(`${label}: <span>${value}</span>`);
+    });
+  document.getElementById("active-filters").innerHTML = items.length
+    ? items.map((item) => `<div class="chip">${item}</div>`).join("")
+    : '<div class="chip">No extra dimension filters</div>';
+}
+
+function detectActivePreset() {
+  if (!state.fromDate || !state.toDate || !MAX_DATE) return "";
+  if (state.fromDate === MIN_DATE && state.toDate === MAX_DATE) return "all";
+  for (const days of [7, 30, 90]) {
+    const from = clampDate(addDays(MAX_DATE, -(days - 1)), MIN_DATE, MAX_DATE);
+    if (state.fromDate === from && state.toDate === MAX_DATE) return String(days);
+  }
+  return "";
+}
+
+function syncPresetButtons() {
+  const active = detectActivePreset();
+  document.querySelectorAll(".preset-btn").forEach((button) => {
+    button.classList.toggle("active", button.dataset.preset === active);
+  });
+  if (active === "all") {
+    document.getElementById("range-label").textContent = "All available data";
+  } else if (active) {
+    document.getElementById("range-label").textContent = `Last ${active} days of data`;
+  } else {
+    document.getElementById("range-label").textContent = "Custom range";
+  }
+}
+
+function updateCards(records) {
+  const tasks = records.filter((record) => record.task_type === "task");
+  const subtasks = records.filter((record) => record.task_type === "subtask");
+  const interruptions = records.filter((record) => record.task_type === "interruption");
+  const totalMinutes = records.reduce((sum, record) => sum + record.estimated_time_min, 0);
+  const avgMinutes = records.length ? totalMinutes / records.length : 0;
+  const avgConfidence = records.length ? records.reduce((sum, record) => sum + record.confidence, 0) / records.length : 0;
+
+  document.getElementById("s-tasks").textContent = fmtInt(tasks.length);
+  document.getElementById("s-subtasks").textContent = fmtInt(subtasks.length);
+  document.getElementById("s-interruptions").textContent = fmtInt(interruptions.length);
+  document.getElementById("s-minutes").textContent = fmtInt(totalMinutes);
+  document.getElementById("s-agents").textContent = fmtInt(uniqueCount(records, "agent_name"));
+  document.getElementById("s-models").textContent = fmtInt(uniqueCount(records, "model_name"));
+
+  document.getElementById("s-tasks-sub").textContent = `${percent(tasks.length, records.length).toFixed(1)}% of slice`;
+  document.getElementById("s-subtasks-sub").textContent = `${percent(subtasks.length, records.length).toFixed(1)}% of slice`;
+  document.getElementById("s-interruptions-sub").textContent = interruptions.length ? `${percent(interruptions.length, records.length).toFixed(1)}% of slice` : "No interruptions in slice";
+  document.getElementById("s-minutes-sub").textContent = records.length ? `${avgMinutes.toFixed(1)} min per record` : "-";
+  document.getElementById("s-agents-sub").textContent = records.length ? `${(records.length / Math.max(uniqueCount(records, "agent_name"), 1)).toFixed(1)} records per agent` : "-";
+  document.getElementById("s-models-sub").textContent = records.length ? `${fmtPct(avgConfidence, 0)} avg confidence` : "-";
+}
+
+function updateTrendCharts(records) {
+  const trend = dailySeries(records);
+  if (!trend.days.length) {
+    setChartEmpty(charts["c-tasks-day"], "No daily data");
+    setChartEmpty(charts["c-minutes-day"], "No daily data");
+    document.getElementById("tasks-day-summary").textContent = "No daily trend available.";
+    document.getElementById("minutes-day-summary").textContent = "No daily trend available.";
+    return;
+  }
+
+  charts["c-tasks-day"].setOption({
+    animationDuration: 300,
+    tooltip: {
+      trigger: "axis",
+      formatter: (params) => `${params[0].axisValueLabel}: ${params[0].data} records`
+    },
+    grid: GRID,
+    xAxis: {
+      type: "category",
+      data: trend.days,
+      axisLabel: { ...TEXT_STYLE, formatter: formatDateLabel, fontSize: 11 },
+      axisLine: AXIS_LINE
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: TEXT_STYLE,
+      axisLine: AXIS_LINE,
+      splitLine: SPLIT_LINE
+    },
+    series: [{
+      type: "line",
+      data: trend.counts,
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 7,
+      lineStyle: { width: 3, color: COLORS.accent },
+      itemStyle: { color: COLORS.accent },
+      areaStyle: { color: "rgba(94, 234, 212, 0.15)" }
+    }]
+  }, true);
+
+  charts["c-minutes-day"].setOption({
+    animationDuration: 300,
+    tooltip: {
+      trigger: "axis",
+      formatter: (params) => `${params[0].axisValueLabel}: ${params[0].data} min`
+    },
+    grid: GRID,
+    xAxis: {
+      type: "category",
+      data: trend.days,
+      axisLabel: { ...TEXT_STYLE, formatter: formatDateLabel, fontSize: 11 },
+      axisLine: AXIS_LINE
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: TEXT_STYLE,
+      axisLine: AXIS_LINE,
+      splitLine: SPLIT_LINE
+    },
+    series: [{
+      type: "bar",
+      data: trend.minutes,
+      barMaxWidth: 18,
+      itemStyle: { color: COLORS.blue, borderRadius: [8, 8, 0, 0] }
+    }]
+  }, true);
+
+  const peakCount = Math.max(...trend.counts);
+  const peakCountDay = trend.days[trend.counts.indexOf(peakCount)];
+  const peakMinutes = Math.max(...trend.minutes);
+  const peakMinutesDay = trend.days[trend.minutes.indexOf(peakMinutes)];
+  document.getElementById("tasks-day-summary").textContent = `Peak daily volume: ${fmtInt(peakCount)} records on ${peakCountDay}.`;
+  document.getElementById("minutes-day-summary").textContent = `Peak daily effort: ${fmtInt(peakMinutes)} minutes on ${peakMinutesDay}.`;
+}
+
+function updateDistributionCharts(records) {
+  const workTypes = sortByCount(groupBy(records, (record) => record.work_type));
+  const wtCount = workTypes.slice().sort((a, b) => b.count - a.count);
+  const wtMinutes = workTypes.slice().sort((a, b) => b.minutes - a.minutes);
+
+  if (!wtCount.length) {
+    setChartEmpty(charts["c-wt-count"], "No work types");
+    setChartEmpty(charts["c-wt-mins"], "No work types");
+    document.getElementById("wt-count-summary").textContent = "No work types in this slice.";
+    document.getElementById("wt-mins-summary").textContent = "No work types in this slice.";
+  } else {
+    const countLabels = wtCount.map((entry) => entry.label).reverse();
+    const countValues = wtCount.map((entry) => entry.count).reverse();
+    const minutesLabels = wtMinutes.map((entry) => entry.label).reverse();
+    const minutesValues = wtMinutes.map((entry) => entry.minutes).reverse();
+
+    charts["c-wt-count"].setOption(baseBarOption(
+      countLabels,
+      countValues,
+      (params) => PALETTE[params.dataIndex % PALETTE.length],
+      (params) => `${params[0].name}: ${params[0].value} records`
+    ), true);
+
+    charts["c-wt-mins"].setOption(baseBarOption(
+      minutesLabels,
+      minutesValues,
+      (params) => PALETTE[(params.dataIndex + 2) % PALETTE.length],
+      (params) => `${params[0].name}: ${params[0].value} min`
+    ), true);
+
+    document.getElementById("wt-count-summary").textContent = `Highest record volume: ${wtCount[0].label} (${fmtInt(wtCount[0].count)} records).`;
+    document.getElementById("wt-mins-summary").textContent = `Highest effort: ${wtMinutes[0].label} (${fmtInt(wtMinutes[0].minutes)} min).`;
+  }
+
+  const agents = aggregateTopN(groupBy(records, (record) => record.agent_name), 8).sort((a, b) => b.count - a.count);
+  if (!agents.length) {
+    setChartEmpty(charts["c-agents"], "No agent data");
+    document.getElementById("agents-summary").textContent = "No agent data in this slice.";
+  } else {
+    charts["c-agents"].setOption(baseBarOption(
+      agents.map((entry) => entry.label).reverse(),
+      agents.map((entry) => entry.count).reverse(),
+      (params) => params.name === "Other" ? "rgba(148, 168, 198, 0.55)" : PALETTE[params.dataIndex % PALETTE.length],
+      (params) => `${params[0].name}: ${params[0].value} records`
+    ), true);
+    document.getElementById("agents-summary").textContent = `Busiest agent: ${agents[0].label} with ${fmtInt(agents[0].count)} records.`;
+  }
+
+  const interruptions = sortByCount(groupBy(records.filter((record) => record.task_type === "interruption"), (record) => record.model_name));
+  if (!interruptions.length) {
+    setChartEmpty(charts["c-interruptions"], "No interruptions");
+    document.getElementById("interruptions-summary").textContent = "No interruption records in this slice.";
+  } else {
+    charts["c-interruptions"].setOption(baseBarOption(
+      interruptions.map((entry) => entry.label).reverse(),
+      interruptions.map((entry) => entry.count).reverse(),
+      COLORS.red,
+      (params) => `${params[0].name}: ${params[0].value} interruptions`
+    ), true);
+    document.getElementById("interruptions-summary").textContent = `Most interruptions: ${interruptions[0].label} with ${fmtInt(interruptions[0].count)} events.`;
+  }
+}
+
+function updateQualityCharts(records) {
+  const complexityOrder = ["low", "medium", "high"];
+  const complexityData = complexityOrder.map((label, index) => ({
+    name: label,
+    value: records.filter((record) => record.complexity === label).length,
+    itemStyle: { color: [COLORS.green, COLORS.blue, COLORS.red][index] }
+  }));
+  charts["c-complexity"].setOption({
+    tooltip: { trigger: "item", formatter: "{b}: {c} ({d}%)" },
+    legend: { bottom: 0, textStyle: TEXT_STYLE, itemWidth: 10, itemHeight: 10 },
+    series: [{
+      type: "pie",
+      radius: ["46%", "72%"],
+      center: ["50%", "44%"],
+      data: complexityData,
+      label: { color: "#e6edf7", fontSize: 11 }
+    }]
+  }, true);
+
+  const confidence = groupBy(records, (record) => record.work_type).sort((a, b) => b.avgConf - a.avgConf);
+  if (!confidence.length) {
+    setChartEmpty(charts["c-confidence"], "No confidence data");
+  } else {
+    charts["c-confidence"].setOption(baseBarOption(
+      confidence.map((entry) => entry.label).reverse(),
+      confidence.map((entry) => Number(entry.avgConf.toFixed(3))).reverse(),
+      (params) => params.value >= 0.8 ? COLORS.green : params.value >= 0.6 ? COLORS.blue : COLORS.yellow,
+      (params) => `${params[0].name}: ${fmtPct(params[0].value)}`
+    ), true);
+    charts["c-confidence"].setOption({
+      xAxis: {
+        min: 0,
+        max: 1,
+        axisLabel: { ...TEXT_STYLE, formatter: (value) => `${Math.round(value * 100)}%` },
+        axisLine: AXIS_LINE,
+        splitLine: SPLIT_LINE
+      },
+      series: [{
+        label: { formatter: (params) => `${Math.round(params.value * 100)}%` }
+      }]
+    });
+  }
+
+  const parentStatus = sortByCount(groupBy(records, (record) => record.parent_link_status)).sort((a, b) => b.count - a.count);
+  if (!parentStatus.length) {
+    setChartEmpty(charts["c-parentlink"], "No linkage data");
+  } else {
+    const colorMap = { linked: COLORS.green, none: COLORS.blue, dangling: COLORS.red };
+    charts["c-parentlink"].setOption(baseBarOption(
+      parentStatus.map((entry) => entry.label).reverse(),
+      parentStatus.map((entry) => entry.count).reverse(),
+      (params) => colorMap[params.name] || COLORS.slate,
+      (params) => `${params[0].name}: ${params[0].value}`
+    ), true);
+  }
+
+  const tagSources = tagSourceSummary(records).sort((a, b) => b.count - a.count);
+  if (!tagSources.length) {
+    setChartEmpty(charts["c-tagsource"], "No tag data");
+  } else {
+    charts["c-tagsource"].setOption(baseBarOption(
+      tagSources.map((entry) => entry.label).reverse(),
+      tagSources.map((entry) => entry.count).reverse(),
+      (params) => params.name === "recommended" ? COLORS.green : COLORS.yellow,
+      (params) => `${params[0].name}: ${params[0].value}`
+    ), true);
+  }
+}
+
+function updateTaxonomyCharts(records) {
+  const tags = tagsSummary(records).sort((a, b) => b.count - a.count).slice(0, 12);
+  if (!tags.length) {
+    setChartEmpty(charts["c-tags"], "No tags");
+    document.getElementById("tags-summary").textContent = "No custom tag activity in this slice.";
+  } else {
+    charts["c-tags"].setOption({
+      animationDuration: 300,
+      tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+      grid: GRID,
+      xAxis: {
+        type: "category",
+        data: tags.map((entry) => entry.label),
+        axisLabel: { ...TEXT_STYLE, rotate: 24, fontSize: 11 },
+        axisLine: AXIS_LINE
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: TEXT_STYLE,
+        axisLine: AXIS_LINE,
+        splitLine: SPLIT_LINE
+      },
+      series: [{
+        type: "bar",
+        data: tags.map((entry) => entry.count),
+        barMaxWidth: 24,
+        itemStyle: { color: (params) => PALETTE[params.dataIndex % PALETTE.length], borderRadius: [8, 8, 0, 0] },
+        label: { show: true, position: "top", color: "#e6edf7", fontSize: 11 }
+      }]
+    }, true);
+    document.getElementById("tags-summary").textContent = `Most common tag: ${tags[0].label} (${fmtInt(tags[0].count)} records).`;
+  }
+
+  const models = uniqueValues(records, "model_name");
+  const complexities = ["low", "medium", "high"];
+  const heatmapMap = {};
+  records.forEach((record) => {
+    const key = `${record.model_name}|${record.complexity}`;
+    heatmapMap[key] = (heatmapMap[key] || 0) + record.estimated_time_min;
+  });
+  const heatmapPoints = [];
+  models.forEach((model, xIndex) => {
+    complexities.forEach((complexity, yIndex) => {
+      const value = heatmapMap[`${model}|${complexity}`] || 0;
+      if (value > 0) heatmapPoints.push([xIndex, yIndex, value]);
+    });
+  });
+  if (!heatmapPoints.length) {
+    setChartEmpty(charts["c-heatmap"], "No model/complexity overlap");
+    document.getElementById("heatmap-summary").textContent = "No model by complexity overlap in this slice.";
+  } else {
+    const max = Math.max(...heatmapPoints.map((point) => point[2]));
+    charts["c-heatmap"].setOption({
+      animationDuration: 300,
+      tooltip: {
+        formatter: (params) => `${models[params.data[0]]} / ${complexities[params.data[1]]}: ${params.data[2]} min`
+      },
+      grid: { left: 18, right: 86, top: 18, bottom: 18, containLabel: true },
+      xAxis: {
+        type: "category",
+        data: models,
+        axisLabel: { ...TEXT_STYLE, fontSize: 11, rotate: models.length > 6 ? 18 : 0 },
+        axisLine: AXIS_LINE,
+        splitArea: { show: true, areaStyle: { color: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.03)"] } }
+      },
+      yAxis: {
+        type: "category",
+        data: complexities,
+        axisLabel: TEXT_STYLE,
+        axisLine: AXIS_LINE,
+        splitArea: { show: true, areaStyle: { color: ["rgba(255,255,255,0.00)", "rgba(255,255,255,0.03)"] } }
+      },
+      visualMap: {
+        min: 0,
+        max,
+        right: 0,
+        top: "center",
+        textStyle: TEXT_STYLE,
+        inRange: { color: ["#1e293b", "#2563eb", "#60a5fa", "#5eead4"] }
+      },
+      series: [{
+        type: "heatmap",
+        data: heatmapPoints,
+        label: { show: true, color: "#e6edf7", fontSize: 11 }
+      }]
+    }, true);
+    const hottest = heatmapPoints.slice().sort((a, b) => b[2] - a[2])[0];
+    document.getElementById("heatmap-summary").textContent = `Highest effort cell: ${models[hottest[0]]} at ${complexities[hottest[1]]} complexity with ${fmtInt(hottest[2])} min.`;
+  }
+}
+
+function renderTableRows(targetId, rows, emptyColspan, mapper) {
+  const body = document.getElementById(targetId);
+  body.innerHTML = rows.length
+    ? rows.map(mapper).join("")
+    : `<tr><td colspan="${emptyColspan}" class="mono">No rows for current filters.</td></tr>`;
+}
+
+function updateDetails(records) {
+  const totalMinutes = records.reduce((sum, record) => sum + record.estimated_time_min, 0);
+  const avgConfidence = records.length ? records.reduce((sum, record) => sum + record.confidence, 0) / records.length : 0;
+  const workTypes = groupBy(records, (record) => record.work_type).sort((a, b) => b.minutes - a.minutes);
+  const agents = groupBy(records, (record) => record.agent_name).sort((a, b) => b.count - a.count);
+  const interruptions = records.filter((record) => record.task_type === "interruption").length;
+  const topType = workTypes[0];
+  const topAgent = agents[0];
+
+  const rangeText = state.fromDate && state.toDate ? `${state.fromDate} to ${state.toDate}` : "full range";
+  document.getElementById("summary-blurb").textContent = records.length
+    ? `This slice covers ${fmtInt(records.length)} records from ${rangeText}. It totals ${fmtInt(totalMinutes)} estimated minutes at an average confidence of ${fmtPct(avgConfidence, 0)}. ${topType ? `${topType.label} is the dominant work type by effort with ${fmtInt(topType.minutes)} minutes.` : ""} ${topAgent ? `${topAgent.label} contributes the most records at ${fmtInt(topAgent.count)}.` : ""} ${interruptions ? `Interruptions account for ${fmtInt(interruptions)} records.` : "There are no interruption records in this slice."}`
+    : "No records are currently visible.";
+
+  const highlights = [
+    { key: "Time span", value: rangeText },
+    { key: "Most effort", value: topType ? `${topType.label} (${fmtInt(topType.minutes)} min)` : "-" },
+    { key: "Busiest agent", value: topAgent ? `${topAgent.label} (${fmtInt(topAgent.count)} records)` : "-" },
+    { key: "Avg confidence", value: records.length ? fmtPct(avgConfidence, 0) : "-" }
+  ];
+  document.getElementById("highlights").innerHTML = highlights.map((item) => `
+    <div class="highlight">
+      <div class="k">${item.key}</div>
+      <div class="v">${item.value}</div>
+    </div>
+  `).join("");
+
+  renderTableRows("table-worktypes", workTypes.slice(0, 8), 4, (entry) => `
+    <tr>
+      <td>${entry.label}</td>
+      <td>${fmtInt(entry.count)}</td>
+      <td>${fmtInt(entry.minutes)}</td>
+      <td>${fmtPct(entry.avgConf, 0)}</td>
+    </tr>
+  `);
+
+  renderTableRows("table-agents", agents.slice(0, 8), 4, (entry) => `
+    <tr>
+      <td>${entry.label}</td>
+      <td>${fmtInt(entry.count)}</td>
+      <td>${fmtInt(entry.minutes)}</td>
+      <td>${fmtInt(entry.modelCount)}</td>
+    </tr>
+  `);
+
+  const latest = records.slice().sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 12);
+  renderTableRows("table-records", latest, 6, (record) => `
+    <tr>
+      <td class="mono">${formatDateTime(record.created_at)}</td>
+      <td>${record.agent_name}<br><span class="mono">${record.model_name}</span></td>
+      <td>${record.work_type}</td>
+      <td>${record.task_type}</td>
+      <td>${fmtInt(record.estimated_time_min)}</td>
+      <td>${fmtPct(record.confidence, 0)}</td>
+    </tr>
+  `);
+}
+
+function render() {
+  const records = getFilteredRecords();
+  document.getElementById("count-display").textContent = fmtInt(records.length);
+  updateActiveFilters();
+  syncPresetButtons();
+
+  const hasData = records.length > 0;
+  document.getElementById("dashboard-main").style.display = hasData ? "grid" : "none";
+  document.getElementById("no-data").style.display = hasData ? "none" : "block";
+  if (!hasData) return;
+
+  updateCards(records);
+  updateTrendCharts(records);
+  updateDistributionCharts(records);
+  updateQualityCharts(records);
+  updateTaxonomyCharts(records);
+  updateDetails(records);
+}
+
+document.querySelectorAll(".preset-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    setPreset(button.dataset.preset === "all" ? "all" : Number(button.dataset.preset));
+  });
+});
+
+controls.from.addEventListener("change", (event) => {
+  state.fromDate = clampDate(event.target.value, MIN_DATE, MAX_DATE);
+  if (state.toDate && state.fromDate && state.fromDate > state.toDate) {
+    state.toDate = state.fromDate;
+    controls.to.value = state.toDate;
+  }
+  render();
+});
+
+controls.to.addEventListener("change", (event) => {
+  state.toDate = clampDate(event.target.value, MIN_DATE, MAX_DATE);
+  if (state.fromDate && state.toDate && state.fromDate > state.toDate) {
+    state.fromDate = state.toDate;
+    controls.from.value = state.fromDate;
+  }
+  render();
+});
+
+[
+  ["taskType", controls.taskType],
+  ["complexity", controls.complexity],
+  ["agentName", controls.agentName],
+  ["modelName", controls.modelName],
+  ["workType", controls.workType],
+  ["domain", controls.domain]
+].forEach(([key, control]) => {
+  control.addEventListener("change", (event) => {
+    state[key] = event.target.value;
+    render();
+  });
+});
+
+document.getElementById("reset-filters").addEventListener("click", () => {
+  state.taskType = "";
+  state.complexity = "";
+  state.agentName = "";
+  state.modelName = "";
+  state.workType = "";
+  state.domain = "";
+  state.fromDate = INITIAL_FROM || MIN_DATE || "";
+  state.toDate = INITIAL_TO || MAX_DATE || "";
+  applyControlValues();
+  render();
+});
+
+initializeControls();
+applyControlValues();
+syncPresetButtons();
+render();
+</script>
+</body>
+</html>
