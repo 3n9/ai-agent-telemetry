@@ -49,6 +49,17 @@ _fetch_file "scripts/gemini-telemetry-hook.py" "$BIN_DEST/gemini-telemetry-hook.
 chmod +x "$BIN_DEST/gemini-telemetry-hook.py"
 echo "✅ Prompts and hook script synced to $GLOBAL_DIR"
 
+# 3. BUILD AND INSTALL BINARIES (only when running from a clone)
+if [ -f "$PROJECT_ROOT/go.mod" ]; then
+    BIN_INSTALL="${INSTALL_DIR:-$HOME/.local/bin}"
+    mkdir -p "$BIN_INSTALL"
+    echo "🔨 Building binaries from source..."
+    for cmd in ai-log ai-log-report; do
+        go build -o "$BIN_INSTALL/$cmd" "$PROJECT_ROOT/cmd/$cmd"
+        echo "   ✅ $cmd → $BIN_INSTALL/$cmd"
+    done
+fi
+
 # 3. HELPER: SAFE INJECT (sync — replaces existing block if present)
 safe_inject() {
     local target="$1"
