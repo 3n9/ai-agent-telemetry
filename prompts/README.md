@@ -4,7 +4,13 @@ This directory contains ready-to-use system prompts that instruct AI agents to l
 
 ## Global Installation (Recommended)
 
-To install these prompts across all projects for all supported agents on your machine, run:
+**Standalone (no repo clone required):**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/3n9/ai-agent-telemetry/main/scripts/install-global.sh | sh
+```
+
+**From a repo clone:**
 
 ```sh
 make install-global

@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
+# Inject AI Telemetry agent prompts into global agent config files.
+#
+# Usage (from a repo clone):
+#   make install-global
+#
+# Usage (standalone, no clone required):
+#   curl -fsSL https://raw.githubusercontent.com/3n9/ai-agent-telemetry/main/scripts/install-global.sh | sh
 set -e
 
+REPO="3n9/ai-agent-telemetry"
+RAW_BASE="https://raw.githubusercontent.com/$REPO/main"
+
 # 1. SETUP PATHS
-PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# When invoked via curl, $0 is "sh" or "-" so dirname gives ".".
+# Detect whether we're running from a real repo clone by checking for prompts/.
+_SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$_SCRIPT_DIR/.." && pwd)"
 GLOBAL_DIR="$HOME/.ai-telemetry"
 PROMPTS_DEST="$GLOBAL_DIR/prompts"
 BIN_DEST="$GLOBAL_DIR/bin"
@@ -13,9 +26,26 @@ END_MARKER="### END $BLOCK_NAME"
 echo "🚀 Installing AI Telemetry Globally..."
 
 # 2. SYNC PROMPTS AND SCRIPTS TO HOME
+# If running from a local clone, copy from disk. Otherwise fetch from GitHub.
 mkdir -p "$PROMPTS_DEST" "$BIN_DEST"
-cp "$PROJECT_ROOT/prompts/"*.md "$PROMPTS_DEST/"
-cp "$PROJECT_ROOT/scripts/gemini-telemetry-hook.py" "$BIN_DEST/"
+
+_fetch_file() {
+    local name="$1"
+    local dest="$2"
+    local local_src="$3"
+    if [ -f "$local_src" ]; then
+        cp "$local_src" "$dest"
+    else
+        echo "   Fetching $name from GitHub..."
+        curl -fsSL "$RAW_BASE/$name" -o "$dest"
+    fi
+}
+
+for md in claude-code.md copilot.md codex.md gemini.md system-prompt.md; do
+    _fetch_file "prompts/$md" "$PROMPTS_DEST/$md" "$PROJECT_ROOT/prompts/$md"
+done
+_fetch_file "scripts/gemini-telemetry-hook.py" "$BIN_DEST/gemini-telemetry-hook.py" \
+    "$PROJECT_ROOT/scripts/gemini-telemetry-hook.py"
 chmod +x "$BIN_DEST/gemini-telemetry-hook.py"
 echo "✅ Prompts and hook script synced to $GLOBAL_DIR"
 

@@ -11,15 +11,22 @@ A lightweight telemetry system for AI CLI agents. Agents self-report their activ
 
 ## Install
 
-Download the pre-built binary for your platform from the [releases page](#), or build from source:
+**One-liner (macOS and Linux):**
 
 ```sh
-# requires Go 1.21+
+curl -fsSL https://raw.githubusercontent.com/3n9/ai-agent-telemetry/main/scripts/install.sh | sh
+```
+
+Installs `ai-log` and `ai-log-report` to `~/.local/bin` by default. Override with `INSTALL_DIR=/usr/local/bin sh`.
+
+**Build from source** (requires Go 1.21+):
+
+```sh
 make build          # builds native binaries into dist/
 make all            # cross-compiles for all platforms
 ```
 
-Place `ai-log` and `ai-log-report` somewhere on your `$PATH`.
+**Windows / manual download:** grab the `.zip` from the [releases page](https://github.com/3n9/ai-agent-telemetry/releases) and extract to a directory on your `%PATH%`.
 
 ## Quick start
 
@@ -104,7 +111,7 @@ Copy the appropriate prompt from the `prompts/` directory:
 | Gemini CLI | `prompts/gemini.md` | Add to `GEMINI.md` |
 | OpenAI Codex CLI | `prompts/codex.md` | Add to `AGENTS.md` |
 
-For MCP-first integration, use the files in `prompts-mcp/` and follow [`MCP_SETUP.md`](./MCP_SETUP.md).
+For MCP-first integration, see the [`ai-log-mcp`](https://github.com/3n9/ai-log-mcp) companion repo.
 
 ## Privacy
 
