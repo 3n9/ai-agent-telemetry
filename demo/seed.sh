@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Seed demo/telemetry.db with realistic AI agent telemetry data.
+# Seed demo/telemetry.db with realistic AI agent telemetry data (~400 records,
+# spread across the last 30 days). Uses Python for fast direct DB insertion.
 # Usage: bash demo/seed.sh
 set -e
 
@@ -11,67 +12,171 @@ echo "🌱 Seeding demo database at $AI_LOG_DB..."
 rm -f "$AI_LOG_DB"
 "$AI_LOG" init
 
-emit() { "$AI_LOG" emit "$1" > /dev/null; }
+python3 << 'PYEOF'
+import sqlite3, json, random, os
+from datetime import datetime, timezone, timedelta
 
-# ── claude-code / claude-sonnet-4.5 ─────────────────────────────────────────
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"coding","language":"typescript","domain":"frontend","complexity":"medium","confidence":0.85,"estimated_time_min":25,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"debugging","language":"typescript","domain":"frontend","complexity":"low","confidence":0.92,"estimated_time_min":10,"task_type":"subtask"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"coding","language":"python","domain":"backend","complexity":"high","confidence":0.7,"estimated_time_min":60,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"refactor","language":"python","domain":"backend","complexity":"medium","confidence":0.88,"estimated_time_min":30,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"debugging","language":"python","domain":"backend","complexity":"high","confidence":0.6,"estimated_time_min":45,"task_type":"interruption"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"analysis","language":"sql","domain":"database","complexity":"medium","confidence":0.9,"estimated_time_min":20,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"coding","language":"go","domain":"backend","complexity":"medium","confidence":0.82,"estimated_time_min":35,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"coding","language":"go","domain":"devops","complexity":"low","confidence":0.95,"estimated_time_min":15,"task_type":"subtask"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"writing","language":"markdown","domain":"documentation","complexity":"low","confidence":0.98,"estimated_time_min":10,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"research","language":"none","domain":"backend","complexity":"medium","confidence":0.75,"estimated_time_min":20,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"coding","language":"typescript","domain":"api","complexity":"high","confidence":0.78,"estimated_time_min":55,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"debugging","language":"typescript","domain":"api","complexity":"medium","confidence":0.83,"estimated_time_min":20,"task_type":"subtask"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"coding","language":"css","domain":"frontend","complexity":"low","confidence":0.96,"estimated_time_min":8,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-sonnet-4.5","work_type":"analysis","language":"python","domain":"database","complexity":"high","confidence":0.65,"estimated_time_min":50,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-opus-4.5","work_type":"planning","language":"none","domain":"backend","complexity":"high","confidence":0.72,"estimated_time_min":40,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-opus-4.5","work_type":"coding","language":"go","domain":"api","complexity":"high","confidence":0.8,"estimated_time_min":70,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"claude-code","model_name":"claude-opus-4.5","work_type":"refactor","language":"go","domain":"backend","complexity":"medium","confidence":0.87,"estimated_time_min":30,"task_type":"subtask"}'
+DB = os.environ["AI_LOG_DB"]
+con = sqlite3.connect(DB)
 
-# ── copilot-cli / gpt-4.1 ───────────────────────────────────────────────────
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"coding","language":"typescript","domain":"frontend","complexity":"medium","confidence":0.88,"estimated_time_min":22,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"debugging","language":"javascript","domain":"frontend","complexity":"medium","confidence":0.79,"estimated_time_min":18,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"coding","language":"python","domain":"backend","complexity":"low","confidence":0.93,"estimated_time_min":12,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"coding","language":"yaml","domain":"devops","complexity":"low","confidence":0.97,"estimated_time_min":8,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"analysis","language":"none","domain":"devops","complexity":"medium","confidence":0.84,"estimated_time_min":25,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"coding","language":"typescript","domain":"api","complexity":"medium","confidence":0.86,"estimated_time_min":28,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"debugging","language":"typescript","domain":"api","complexity":"low","confidence":0.91,"estimated_time_min":10,"task_type":"subtask"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"writing","language":"markdown","domain":"documentation","complexity":"low","confidence":0.99,"estimated_time_min":5,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"refactor","language":"typescript","domain":"frontend","complexity":"medium","confidence":0.85,"estimated_time_min":20,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-4.1","work_type":"coding","language":"sql","domain":"database","complexity":"medium","confidence":0.88,"estimated_time_min":15,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-5-mini","work_type":"coding","language":"python","domain":"backend","complexity":"low","confidence":0.94,"estimated_time_min":10,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-5-mini","work_type":"debugging","language":"python","domain":"backend","complexity":"medium","confidence":0.77,"estimated_time_min":22,"task_type":"interruption"}'
-emit '{"schema_version":1,"agent_name":"copilot-cli","model_name":"gpt-5-mini","work_type":"analysis","language":"none","domain":"backend","complexity":"low","confidence":0.9,"estimated_time_min":12,"task_type":"task"}'
+# ── vocabulary ────────────────────────────────────────────────────────────────
+AGENTS = {
+    "claude-code":  ["claude-sonnet-4.5", "claude-sonnet-4.5", "claude-opus-4.5"],
+    "copilot-cli":  ["claude-sonnet-4.6", "claude-sonnet-4.6", "gpt-4.1", "gpt-5-mini"],
+    "gemini-cli":   ["gemini-2.0-flash", "gemini-2.0-flash", "gemini-2.0-pro"],
+    "codex-cli":    ["gpt-5.3-codex", "gpt-5.3-codex", "gpt-5.1-codex"],
+}
+RECOMMENDED_WORK_TYPES = {"coding","debugging","refactor","analysis","planning","research","writing","support"}
+RECOMMENDED_LANGS      = {"typescript","python","go","javascript","sql","yaml","shell","markdown","css","none"}
+RECOMMENDED_DOMAINS    = {"frontend","backend","api","database","devops","documentation","testing","none"}
 
-# ── gemini-cli / gemini-2.0-flash ───────────────────────────────────────────
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-flash","work_type":"coding","language":"python","domain":"backend","complexity":"medium","confidence":0.82,"estimated_time_min":28,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-flash","work_type":"analysis","language":"python","domain":"database","complexity":"medium","confidence":0.87,"estimated_time_min":18,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-flash","work_type":"coding","language":"go","domain":"backend","complexity":"low","confidence":0.93,"estimated_time_min":14,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-flash","work_type":"research","language":"none","domain":"devops","complexity":"medium","confidence":0.76,"estimated_time_min":30,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-flash","work_type":"debugging","language":"go","domain":"backend","complexity":"medium","confidence":0.81,"estimated_time_min":20,"task_type":"subtask"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-pro","work_type":"coding","language":"typescript","domain":"frontend","complexity":"high","confidence":0.73,"estimated_time_min":50,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-pro","work_type":"planning","language":"none","domain":"api","complexity":"high","confidence":0.68,"estimated_time_min":45,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-pro","work_type":"coding","language":"python","domain":"database","complexity":"high","confidence":0.71,"estimated_time_min":60,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"gemini-cli","model_name":"gemini-2.0-pro","work_type":"refactor","language":"typescript","domain":"frontend","complexity":"medium","confidence":0.85,"estimated_time_min":25,"task_type":"subtask"}'
+# explicit order so weights align correctly
+WORK_TYPES   = ["coding","debugging","refactor","analysis","planning","research","writing","support"]
+WT_WEIGHTS   = [35,      18,         10,        10,        6,         6,         10,       5]
+LANGUAGES    = ["typescript","python","go","javascript","sql","yaml","shell","markdown","css","none"]
+DOMAINS      = ["frontend","backend","api","database","devops","documentation","testing","none"]
+COMPLEXITIES = ["low", "low", "medium", "medium", "medium", "high"]
 
-# ── codex-cli / gpt-5.3-codex ───────────────────────────────────────────────
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"coding","language":"javascript","domain":"frontend","complexity":"medium","confidence":0.86,"estimated_time_min":20,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"coding","language":"python","domain":"backend","complexity":"medium","confidence":0.84,"estimated_time_min":25,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"debugging","language":"javascript","domain":"frontend","complexity":"low","confidence":0.93,"estimated_time_min":8,"task_type":"subtask"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"coding","language":"shell","domain":"devops","complexity":"low","confidence":0.97,"estimated_time_min":6,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"refactor","language":"javascript","domain":"frontend","complexity":"medium","confidence":0.83,"estimated_time_min":18,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"analysis","language":"sql","domain":"database","complexity":"medium","confidence":0.88,"estimated_time_min":15,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"coding","language":"typescript","domain":"api","complexity":"high","confidence":0.74,"estimated_time_min":55,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"writing","language":"markdown","domain":"documentation","complexity":"low","confidence":0.98,"estimated_time_min":7,"task_type":"task"}'
-emit '{"schema_version":1,"agent_name":"codex-cli","model_name":"gpt-5.3-codex","work_type":"support","language":"none","domain":"none","complexity":"low","confidence":0.95,"estimated_time_min":5,"task_type":"task"}'
+CUSTOM_TAGS_POOL = [
+    ["auth", "jwt"],
+    ["ui-polish"],
+    ["performance"],
+    ["migration", "schema"],
+    ["ci-cd"],
+    ["security"],
+    ["onboarding"],
+    ["seo"],
+    ["caching"],
+    ["rate-limiting"],
+    ["logging"],
+    ["monitoring"],
+    ["feature-flag"],
+    ["a11y"],
+    [],
+    [],
+    [],  # no tags — most common
+]
 
+NOW = datetime.now(timezone.utc)
+
+def rand_date(days_back=30):
+    offset = random.randint(0, days_back * 86400)
+    return (NOW - timedelta(seconds=offset)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+def tag_source(val, vocab):
+    return "recommended" if val in vocab else "custom"
+
+def ulid_fake(created_at: str) -> str:
+    """Fake ULID: timestamp prefix + random suffix (good enough for demo)."""
+    import time as _time
+    ts = int(datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ")
+             .replace(tzinfo=timezone.utc).timestamp() * 1000)
+    chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    t = ""
+    for _ in range(10):
+        t = chars[ts & 31] + t
+        ts >>= 5
+    r = "".join(random.choices(chars, k=16))
+    return t + r
+
+def make_record(agent, task_type, parent_id=None):
+    model      = random.choice(AGENTS[agent])
+    work_type  = random.choices(WORK_TYPES, weights=WT_WEIGHTS)[0]
+    language   = random.choice(LANGUAGES)
+    domain     = random.choice(DOMAINS)
+    complexity = random.choice(COMPLEXITIES)
+    confidence = round(random.uniform(0.55, 0.99), 2)
+    minutes    = random.choice([5,8,10,12,15,18,20,22,25,28,30,35,40,45,50,55,60,70,80])
+    created_at = rand_date()
+    tid        = ulid_fake(created_at)
+    tags       = random.choice(CUSTOM_TAGS_POOL)
+
+    payload = {
+        "schema_version": 1,
+        "agent_name":     agent,
+        "model_name":     model,
+        "work_type":      work_type,
+        "language":       language,
+        "domain":         domain,
+        "complexity":     complexity,
+        "confidence":     confidence,
+        "estimated_time_min": minutes,
+        "task_type":      task_type,
+    }
+    if tags:
+        payload["custom_tags"] = tags
+    if parent_id:
+        payload["parent_task_id"] = parent_id
+
+    row = (
+        tid, created_at, 1,
+        agent, model,
+        work_type, tag_source(work_type, RECOMMENDED_WORK_TYPES),
+        None, None,
+        language, tag_source(language, RECOMMENDED_LANGS),
+        domain, tag_source(domain, RECOMMENDED_DOMAINS),
+        complexity, confidence, minutes,
+        task_type, parent_id,
+        None, None, None,
+        json.dumps(payload),
+    )
+    return tid, row, tags, created_at
+
+INSERT = """
+INSERT INTO tasks (
+  id, created_at, schema_version,
+  agent_name, model_name,
+  work_type, work_type_tag_source,
+  secondary_work_type, secondary_work_type_tag_source,
+  language, language_tag_source,
+  domain, domain_tag_source,
+  complexity, confidence, estimated_time_min,
+  task_type, parent_task_id,
+  input_tokens, output_tokens, cost_estimate,
+  raw_payload_json
+) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+"""
+
+TAG_INSERT = "INSERT INTO task_tags (task_id, tag_value, tag_source) VALUES (?,?,?)"
+
+agents = list(AGENTS.keys())
+
+# ── emit tasks (150) ─────────────────────────────────────────────────────────
+task_ids = []
+for _ in range(150):
+    agent = random.choice(agents)
+    tid, row, tags, cat = make_record(agent, "task")
+    con.execute(INSERT, row)
+    for tag in tags:
+        src = "recommended" if tag in {"auth","ci-cd","security","logging","monitoring","performance"} else "custom"
+        con.execute(TAG_INSERT, (tid, tag, src))
+    task_ids.append(tid)
+
+# ── emit subtasks (230) ───────────────────────────────────────────────────────
+for _ in range(230):
+    agent  = random.choice(agents)
+    parent = random.choice(task_ids)
+    tid, row, tags, cat = make_record(agent, "subtask", parent_id=parent)
+    con.execute(INSERT, row)
+    for tag in tags:
+        src = "recommended" if tag in {"auth","ci-cd","security","logging","monitoring","performance"} else "custom"
+        con.execute(TAG_INSERT, (tid, tag, src))
+
+# ── emit interruptions (25) ───────────────────────────────────────────────────
+for _ in range(25):
+    agent  = random.choice(agents)
+    parent = random.choice(task_ids) if random.random() > 0.4 else None
+    tid, row, tags, cat = make_record(agent, "interruption", parent_id=parent)
+    con.execute(INSERT, row)
+
+con.commit()
+con.close()
+print(f"  inserted 405 records (150 tasks · 230 subtasks · 25 interruptions)")
+PYEOF
+
+echo ""
 echo "✅ Demo database seeded."
 echo "   DB: $AI_LOG_DB"
 echo ""
 echo "Preview:"
-AI_LOG_DB="$AI_LOG_DB" "$AI_LOG" init 2>/dev/null || true
 AI_LOG_DB="$AI_LOG_DB" ai-log-report summary 2>/dev/null || true
