@@ -2,6 +2,10 @@
 
 A lightweight telemetry system for AI CLI agents. Agents self-report their activity as structured metadata. Data is stored locally in SQLite and can be analysed with the companion reporting tool.
 
+![AI Agent Telemetry Dashboard](docs/screenshots/dashboard.png)
+
+> **Prefer MCP?** Use [`ai-log-mcp`](https://github.com/3n9/ai-log-mcp) — one-command install that wires all three telemetry tools directly into Claude, Gemini, Codex, and Copilot CLI.
+
 ## Tools
 
 | Tool | Purpose |
@@ -112,6 +116,51 @@ Copy the appropriate prompt from the `prompts/` directory:
 | OpenAI Codex CLI | `prompts/codex.md` | Add to `AGENTS.md` |
 
 For MCP-first integration, see the [`ai-log-mcp`](https://github.com/3n9/ai-log-mcp) companion repo.
+
+## Demo
+
+Seed a local demo database and explore the reports:
+
+```sh
+bash demo/seed.sh      # populate demo/telemetry.db with ~50 records
+```
+
+**Terminal reports:**
+
+```
+$ AI_LOG_DB=demo/telemetry.db ai-log-report summary --by work_type
+
+WORK_TYPE             Count  Est. minutes
+--------------------  -----  ------------
+coding                21     621
+debugging             8      153
+analysis              6      140
+refactor              5      123
+writing               3      22
+planning              2      85
+research              2      50
+support               1      5
+```
+
+```
+$ AI_LOG_DB=demo/telemetry.db ai-log-report chart bar --by model_name
+
+MODEL_NAME Distribution (count)
+
+claude-sonnet-4.5 │ ████████████████████████████████████████ 14
+gpt-4.1           │ █████████████████████████████ 10
+gpt-5.3-codex     │ ██████████████████████████ 9
+gemini-2.0-flash  │ ██████████████ 5
+gemini-2.0-pro    │ ███████████ 4
+claude-opus-4.5   │ █████████ 3
+gpt-5-mini        │ █████████ 3
+```
+
+**HTML dashboard:**
+
+```sh
+AI_LOG_DB=demo/telemetry.db ai-log-report dashboard
+```
 
 ## Privacy
 
